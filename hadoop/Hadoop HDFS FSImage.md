@@ -16,64 +16,90 @@
 
 public class FSImageTest {
 
-    public void saveFSImage() throws IOException {
-        String fsImage = "/Users/bairong/fsimg";
-        DataOutputStream out = 
-            new DataOutputStream(new BufferedOutputStream(new FileOutputStream(fsImage)));
-        String[] files = new String[7];
+    static String FS_IMAGE = "fsimage";
+    static String NEW_FS_IMAGE = "fsimage.new";
+    static String OLD_FS_IMAGE = "fsimage.old";
+
+
+    public void saveFSImage(File fullimage, File edits) throws IOException {
+
+        String[] rootDir = new String[7];
+        Integer[] blokcs = new Integer[6];
+
+        File curFile = new File(fullimage, FS_IMAGE);
+        File newFile = new File(fullimage, NEW_FS_IMAGE);
+        File oldFile = new File(fullimage, OLD_FS_IMAGE);
+
+        DataOutputStream out = null;
         try {
-            out.writeInt(files.length - 1);
-            String hdfsFileName = "/a";
-            UTF8 utf8 = new UTF8(hdfsFileName);
+            out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(newFile)));
+            out.writeInt(rootDir.length); // HDFS上总文件数
+
+
+            String fullName = "/a";
+            UTF8 utf8 = new UTF8(fullName); // 写入文件名
             utf8.write(out);
 
-            Integer[] blocks = new Integer[7];
-            out.writeInt(blocks.length);
+            out.writeInt(blokcs.length); // 写入文件对应block数量
 
-            Long blockId = -99887766L;
-            Long blockLength = 520L;
 
-            out.writeLong(blockId);
-            out.writeLong(blockLength);
+            long blkId = -99887711; // block的id
+            long len = 99881; // block的大小
+
+            out.writeLong(blkId);
+            out.writeLong(len);
+
+        } catch (Exception e) {
+            e.printStackTrace();
         } finally {
             out.close();
         }
     }
 
-    public void readFSImage() throws IOException {
-        String fsImage = "/Users/bairong/fsimg";
-        DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(fsImage)));
 
-        // 获取HDFS上有多少个文件
-        int numFiles = in.readInt();
+    public void loadFSImage(File currFile) {
+        try {
 
-        UTF8 name = new UTF8();
-        // 获取HDFS文件名字
-        name.readFields(in);
+            DataInputStream in = new DataInputStream(new BufferedInputStream((new FileInputStream(currFile))));
 
-        // 获取文件block数量
-        int numBlocks = in.readInt();
+            // 总文件数量
+            int numFiles = in.readInt();
+            
+            for (int i = 0; i < numFiles; i++) {
+                UTF8 name = new UTF8();
+                name.readFields(in);
 
-        // blockID信息
-        long blockId = in.readLong();
-        // block大小
-        long len = in.readLong();
+                // 文件块数量
+                int numBlocks = in.readInt();
+                // 文件块id
+                long blkId = in.readLong();
+                // 文件大小
+                long len = in.readLong();
 
-        System.out.println("HDFS总文件数: " + numFiles);
-        System.out.println("读取的名字是: " + name);
-        System.out.println("该文件的block数量: " + numBlocks);
-        System.out.println("blockID: " + blockId);
-        System.out.println("block大小: " + len);
-
+                System.out.println("HDFS总文件数: " + numFiles);
+                System.out.println("读取的名字是: " + name);
+                System.out.println("该文件的block数量: " + numBlocks);
+                System.out.println("blockID: " + blkId);
+                System.out.println("block大小: " + len);
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 
     public static void main(String[] args) throws IOException {
+        File fullimage = new File("/Users/Joker/Desktop");
+        File currFile = new File("/Users/Joker/Desktop/" + NEW_FS_IMAGE);
         FSImageTest fsImageTest = new FSImageTest();
-        fsImageTest.saveFSImage();
-        fsImageTest.readFSImage();
+        fsImageTest.saveFSImage(fullimage, null);
+
+        fsImageTest.loadFSImage(currFile);
     }
 }
+
 
 
 
@@ -87,7 +113,17 @@ public class FSImageTest {
 
 测试程序生成的文件, 我们可以看到写入的文件/a，然后包裹在其中的就是对应这个文件的数据信息了。
 
-![image-20190107172729251](/var/folders/0m/wf03pfg10tb55bmmyfb3g7pc0000gn/T/abnerworks.Typora/image-20190107172729251.png)
+![image-20190107172729251](https://github.com/basebase/img_server/blob/master/hadoop%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E5%9B%BE%E7%89%87%E9%9B%86%E5%90%88/fsimage_save.png?raw=true)
+
+
+
+然后我们在看看读取这个文件的信息内容把。
+
+![image-20190107172729251](https://github.com/basebase/img_server/blob/master/hadoop%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E5%9B%BE%E7%89%87%E9%9B%86%E5%90%88/fsimage_read.png?raw=true)
+
+
+
+
 
 
 
@@ -97,28 +133,20 @@ public class FSImageTest {
 
 ```java
 
-
 /**
-  org.apache.hadoop.dfs.FSDirectory.java
-**/
+  org.apache.hadoop.dfs.FSDirectory
+*/
 
 public FSDirectory(File dir) throws IOException {
-        // 获取已经存在的image文件夹
-        // 该dir就是我们配置NameNode路径的数据
         File fullimage = new File(dir, "image");
-        // 如果image不存在则需要对NameNode进行格式化
+        // 如果在我们配置namenode的文件夹中不存在image文件夹的话, 就表示没有格式化集群
+        // 就需要我们优先进行格式化.
         if (! fullimage.exists()) {
           throw new IOException("NameNode not formatted: " + dir);
         }
-    
-        // 获取edits文件
         File edits = new File(dir, "edits");
     
-        /**
-        
-            loadFSImage(核心):
-              
-        **/
+        // 重点内容, 其实说实话看一下上面的测试程序也还好.
         if (loadFSImage(fullimage, edits)) {
             saveFSImage(fullimage, edits);
         }
@@ -130,26 +158,20 @@ public FSDirectory(File dir) throws IOException {
         }
 }
 
-
-
 ```
 
 
 
 ```java
 
-
-INode rootDir = new INode("", null, null);
-TreeSet activeBlocks = new TreeSet();
-
-
 boolean loadFSImage(File fsdir, File edits) throws IOException {
         //
         // Atomic move sequence, to recover from interrupted save
+        // 这里说是原子性的保存和移动, 但是有点没看明白, 晚点再细看下.
         //
-        File curFile = new File(fsdir, FS_IMAGE);  // fsimage
-        File newFile = new File(fsdir, NEW_FS_IMAGE); // fsimage.new
-        File oldFile = new File(fsdir, OLD_FS_IMAGE); // fsimage.old
+        File curFile = new File(fsdir, FS_IMAGE);
+        File newFile = new File(fsdir, NEW_FS_IMAGE);
+        File oldFile = new File(fsdir, OLD_FS_IMAGE);
 
         // Maybe we were interrupted between 2 and 4
         if (oldFile.exists() && curFile.exists()) {
@@ -165,31 +187,26 @@ boolean loadFSImage(File fsdir, File edits) throws IOException {
             // Or else before stage 1, in which case we lose the edits
             newFile.delete();
         }
-
-        //
-        // Load in bits
-        // 如果存在fsimage元数据则先读取对应数据
+    
+        // 如果存在fsimage文件
         if (curFile.exists()) {
-            DataInputStream in = 
-                new DataInputStream(new BufferedInputStream(newFileInputStream(curFile)));
+            // 读取fsimage文件
+            DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(curFile)));
             try {
-                // 获取有多少个文件
-                // 例如我上传了 a|b|c|xxa|等等文件
-                // 那么这里优先会读取出对应文件的/.file.crc文件
-                // 即/a.crc|/b.crc|/.xxa.crc, 然后在读取/a|/b|/c|/xxa|在HDFS对应的文件数据
+                
+                // 读取HDFS总文件数
                 int numFiles = in.readInt();
                 for (int i = 0; i < numFiles; i++) {
                     UTF8 name = new UTF8();
-                    // 读取对应的文件
                     name.readFields(in);
-                    // 该文件有多少个block
+                    // 读取文件block数量
                     int numBlocks = in.readInt();
                     if (numBlocks == 0) {
                         unprotectedAddFile(name, null);
                     } else {
                         Block blocks[] = new Block[numBlocks];
-                        // 获取该文件的所有block数据块
                         for (int j = 0; j < numBlocks; j++) {
+                            // 把对应block的id和长度数量读取出来
                             blocks[j] = new Block();
                             blocks[j].readFields(in);
                         }
@@ -208,27 +225,6 @@ boolean loadFSImage(File fsdir, File edits) throws IOException {
         }
 }
 
-
-
-
-
-
-
-boolean unprotectedAddFile(UTF8 name, Block blocks[]) {
-        synchronized (rootDir) {
-            if (blocks != null) {
-                // Add file->block mapping
-                for (int i = 0; i < blocks.length; i++) {
-                    // 记录还存活的block数
-                    activeBlocks.add(blocks[i]);
-                }
-            }
-            
-            // 将当前block记录在对应目录下
-            return (rootDir.addNode(name.toString(), blocks) != null);
-        }
-}
-
 ```
 
 
@@ -237,40 +233,6 @@ boolean unprotectedAddFile(UTF8 name, Block blocks[]) {
 
 ```java
 
-class INode {
-    
-    public String name;
-    public INode parent;
-    public TreeMap children = new TreeMap();
-    public Block blocks[];
-
-    
-    INode(String name, INode parent, Block blocks[]) {
-        this.name = name;
-        this.parent = parent;
-        this.blocks = blocks;
-    }
-    
-    INode addNode(String target, Block blks[]) {
-            if (getNode(target) != null) {
-                return null;
-            } else {
-                String parentName = DFSFile.getDFSParent(target);
-                if (parentName == null) {
-                    return null;
-                }
-
-                INode parentNode = getNode(parentName);
-                if (parentNode == null) {
-                    return null;
-                } else {
-                    String targetName = new File(target).getName();
-                    INode newItem = new INode(targetName, parentNode, blks);
-                    parentNode.children.put(targetName, newItem);
-                    return newItem;
-                }
-            }
-    }
 
 
 ```
@@ -278,7 +240,3 @@ class INode {
 
 
 
-
-
-
-![image-20190107172617427](/var/folders/0m/wf03pfg10tb55bmmyfb3g7pc0000gn/T/abnerworks.Typora/image-20190107172617427.png)
