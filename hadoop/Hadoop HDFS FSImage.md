@@ -168,6 +168,7 @@ boolean loadFSImage(File fsdir, File edits) throws IOException {
         //
         // Atomic move sequence, to recover from interrupted save
         // 这里说是原子性的保存和移动, 但是有点没看明白, 晚点再细看下.
+        // 这里说的就是下面这些文件的移动和删除规则.
         //
         File curFile = new File(fsdir, FS_IMAGE);
         File newFile = new File(fsdir, NEW_FS_IMAGE);
@@ -210,6 +211,8 @@ boolean loadFSImage(File fsdir, File edits) throws IOException {
                             blocks[j] = new Block();
                             blocks[j].readFields(in);
                         }
+                        
+                        // 把文件挂载到根节点上, 方便写入到fsimage中
                         unprotectedAddFile(name, blocks);
                     }
                 }
@@ -229,14 +232,114 @@ boolean loadFSImage(File fsdir, File edits) throws IOException {
 
 
 
+下面，我们将debug以图片的形式截图出来。我们先看看看一个比较的文件图片。
+
+
+
+![image-20190107172729251](https://github.com/basebase/img_server/blob/master/hadoop%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E5%9B%BE%E7%89%87%E9%9B%86%E5%90%88/data1.jpg?raw=true)
+
+
+
+
+
+
+
+看到了吗，这里/xaa文件被切分成了2个block块了。
+
+![image-20190107172729251](https://github.com/basebase/img_server/blob/master/hadoop%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E5%9B%BE%E7%89%87%E9%9B%86%E5%90%88/fsimage1.jpg?raw=true)
+
+
+
+
+
+
+
+我们在来看看这个block中相关信息，32MB一个block。
+
+是不是很清楚了，现在剩下一个最关键的点就是unprotectedAddFile(name, blocks)方法了。
+
+让我们点进去看看。
+
+![image-20190107172729251](https://github.com/basebase/img_server/blob/master/hadoop%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E5%9B%BE%E7%89%87%E9%9B%86%E5%90%88/b1.jpg?raw=true)
+
+
+
+
+
 
 
 ```java
 
+/**
+  org.apache.hadoop.dfs.FSDirectory
+**/
+
+boolean unprotectedAddFile(UTF8 name, Block blocks[]) {
+        synchronized (rootDir) {
+            if (blocks != null) {
+                // Add file->block mapping
+                for (int i = 0; i < blocks.length; i++) {
+                    activeBlocks.add(blocks[i]);
+                }
+            }
+            return (rootDir.addNode(name.toString(), blocks) != null);
+        }
+}
 
 
+
+INode addNode(String target, Block blks[]) {
+    
+    		// 这里我没细看, 但是看大概的意思就是判断当前文件是否已经存在了。
+            if (getNode(target) != null) {
+                return null;
+            } else {
+                
+                // 获取该文件的父节点路径
+                String parentName = DFSFile.getDFSParent(target);
+                if (parentName == null) {
+                    return null;
+                }
+
+                INode parentNode = getNode(parentName);
+                if (parentNode == null) {
+                    return null;
+                } else {
+                    String targetName = new File(target).getName();
+                    INode newItem = new INode(targetName, parentNode, blks);
+                    // 将节点挂载到父节点下面
+                    parentNode.children.put(targetName, newItem);
+                    return newItem;
+                }
+            }
+}
 ```
 
 
 
 
+
+那么，下面还是以图片的形式展示一下。
+
+
+
+看到这个rootDir没，这就是我们在saveFSImage的时候写入的总文件数量。
+
+![image-20190107172729251](https://github.com/basebase/img_server/blob/master/hadoop%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E5%9B%BE%E7%89%87%E9%9B%86%E5%90%88/r1.jpg?raw=true)
+
+
+
+
+
+
+
+
+
+![image-20190107172729251](https://github.com/basebase/img_server/blob/master/hadoop%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E5%9B%BE%E7%89%87%E9%9B%86%E5%90%88/a1.jpg?raw=true)
+
+
+
+自此，FSImage的基本功能就介绍的差不多了，剩下的就是原子性的操作，这个我还需要点时间研究看看。
+
+
+我大概明白这个所谓的原子移动文件了，集群在创建的或者保存旧的fsimage文件时候如果遇到其它情况中途失败了，再次重启的时候会进行判断并修复。
