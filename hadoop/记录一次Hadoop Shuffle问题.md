@@ -92,5 +92,29 @@ http://bigdatadecode.club/MapReduce%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90--Reduce%
 自此, 我最终的结论只到了这里。
 
 
+#### 2019-11-21新增(上下求索?)
+![image-20190107172729251](https://github.com/basebase/img_server/blob/master/hadoop%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E5%9B%BE%E7%89%87%E9%9B%86%E5%90%88/shuffle005.gif?raw=true)
+
+这张图, 是我在debug源码进行测试的, 当我去修改里面代码来进行模拟测试, 可以的是后面很多代码没有log输出, 只有出错后才会存在。<br />
+[动图不好看的话, 我把原图片一起上传。] <br /><br /><br /><br />
+
+![image-20190107172729251](https://github.com/basebase/img_server/blob/master/hadoop%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E5%9B%BE%E7%89%87%E9%9B%86%E5%90%88/shuffle006.png?raw=true)
+
+![image-20190107172729251](https://github.com/basebase/img_server/blob/master/hadoop%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E5%9B%BE%E7%89%87%E9%9B%86%E5%90%88/shuffle007.png?raw=true)
+
+![image-20190107172729251](https://github.com/basebase/img_server/blob/master/hadoop%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E5%9B%BE%E7%89%87%E9%9B%86%E5%90%88/shuffle008.png?raw=true)
+
+![image-20190107172729251](https://github.com/basebase/img_server/blob/master/hadoop%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E5%9B%BE%E7%89%87%E9%9B%86%E5%90%88/shuffle009.png?raw=true)
+
+![image-20190107172729251](https://github.com/basebase/img_server/blob/master/hadoop%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E5%9B%BE%E7%89%87%E9%9B%86%E5%90%88/shuffle0010.png?raw=true)
+
+![image-20190107172729251](https://github.com/basebase/img_server/blob/master/hadoop%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E5%9B%BE%E7%89%87%E9%9B%86%E5%90%88/shuffle0011.png?raw=true)
+
+![image-20190107172729251](https://github.com/basebase/img_server/blob/master/hadoop%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E5%9B%BE%E7%89%87%E9%9B%86%E5%90%88/shuffle0012.png?raw=true)
+
+
+
+
+
 #### 写在最后
 虽然看似一长串的查找, 但其实我并不确定我的分析是否正确, 我只能按照我现有的逻辑分析排查, 文中有纰漏的地方还请多指教。
