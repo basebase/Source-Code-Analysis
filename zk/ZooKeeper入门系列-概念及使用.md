@@ -94,7 +94,8 @@ ZooKeeper有以下几个概念, 我们先来看看有哪些个把。
 ZK虽然是一个针对分布式系统的协调服务, 但它本身也是一个分布式程序。ZK遵循一个简单的客户端-服务器模型, 其中客户端是使用服务的节点, 而服务器则是提供服务的节点。ZK服务器的集合形成了一个ZK集合体。一个ZK客户端可连接到一个ZK服务器。每个ZK服务器可以同时处理大量客户端连接。每个客户端定期发送ping到它所连接的ZK服务器, 让服务器知道它处于活动和连接状态。被询问的ZK服务器通过ping确认进行响应, 表示服务器也处于活动状态。如果客户端在指定时间内没收到服务器的确认, 那么客户端会连接到集合体中的另一台服务器, 而且客户端会话会被透明的转移到新的ZK服务器上。
 
 ZooKeeper 的客户端-服务器架构
-![ZK架构图](https://github.com/basebase/img_server/blob/master/zk/zk04.png?raw=true)
+
+![ZK架构图](https://github.com/basebase/img_server/blob/master/zk/zk04.png?raw=true) <br />
 
 
 ZK有一个类似于文件系统的数据模型, 由znodes组成
